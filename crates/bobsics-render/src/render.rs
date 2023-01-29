@@ -110,8 +110,8 @@ impl BobsicsRenderer {
                 border_radius: 0.0
             },
             crate::Quad {
-                top_left: [-0.9, -0.1],
-                bottom_right: [-0.1, 0.9],
+                top_left: [-0.1, -0.1],
+                bottom_right: [-0.9, -0.9],
                 color: [0.0, 0.0, 1.0, 1.0],
                 border_radius: 0.0
             }
