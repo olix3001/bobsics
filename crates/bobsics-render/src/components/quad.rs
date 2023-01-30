@@ -1,4 +1,5 @@
 use bytemuck::{Pod, Zeroable};
+use wgpu::util::DeviceExt;
 
 const DEFAULT_MAX_QUADS: usize = 10_000;
 
@@ -39,12 +40,13 @@ impl Quad {
 #[derive(Debug)]
 pub struct QuadPipeline {
     instances: wgpu::Buffer,
-    
+    index_buffer: wgpu::Buffer,
+
     pipeline: wgpu::RenderPipeline
 }
 
 impl QuadPipeline {
-    pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
+    pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat, globals_bind_group_layout: &wgpu::BindGroupLayout) -> Self {
         // Create shader
         let shader = device.create_shader_module(wgpu::include_wgsl!("shaders/quad.wgsl"));
 
@@ -55,11 +57,20 @@ impl QuadPipeline {
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+
+        // Create index buffer
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Quad index buffer"),
+            contents: bytemuck::cast_slice(INDICES),
+            usage: wgpu::BufferUsages::INDEX,
+        });
  
         // Create pipeline
         let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Quad Pipeline Layout"),
-            bind_group_layouts: &[],
+            bind_group_layouts: &[
+                globals_bind_group_layout
+            ],
             push_constant_ranges: &[],
         });
 
@@ -76,7 +87,7 @@ impl QuadPipeline {
                 entry_point: "fs_main",
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
-                    blend: Some(wgpu::BlendState::REPLACE),
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
@@ -100,6 +111,8 @@ impl QuadPipeline {
 
         Self {
             instances: instance_buffer,
+            index_buffer,
+
             pipeline: render_pipeline
         }
 
@@ -111,7 +124,8 @@ impl QuadPipeline {
         staging_belt: &mut wgpu::util::StagingBelt,
         encoder: &mut wgpu::CommandEncoder,
         view: &wgpu::TextureView,
-        instances: Vec<Quad>
+        instances: Vec<Quad>,
+        globals_bind_group: &wgpu::BindGroup,
     ) {
         if instances.is_empty() { return; }
         // Set buffer
@@ -134,7 +148,9 @@ impl QuadPipeline {
         });
 
         rpass.set_pipeline(&self.pipeline);
+        rpass.set_bind_group(0, globals_bind_group, &[]);
         rpass.set_vertex_buffer(0, self.instances.slice(..));
+        rpass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
         rpass.draw(0..INDICES.len() as u32, 0..instances.len() as u32);
 
     }
