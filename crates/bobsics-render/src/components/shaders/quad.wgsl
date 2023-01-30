@@ -80,7 +80,7 @@ fn ndc_to_screen(ndc: vec2<f32>) -> vec2<f32> {
 fn box_dist(p: vec2<f32>, size: vec2<f32>, r: f32) -> f32 {
     let size = size - vec2<f32>(r, r);
     let d = abs(p) - size;
-    return length(max(d, vec2<f32>(0.0))) - r;
+    return length(max(d, vec2<f32>(0.0))) + min(max(d.x, d.y), 0.0) - r;
 }
 
 @fragment
@@ -99,7 +99,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let dist = box_dist(p, size/2.0, input.border_radius);
 
     // Calculate the alpha
-    let alpha = 1.0 - smoothstep(0.0, 1.0, dist);
+    let alpha = 1.0 - smoothstep(-0.75, -0.1, dist);
 
     // Return the color with the alpha
     return vec4<f32>(input.color.rgb, alpha);

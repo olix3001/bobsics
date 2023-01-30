@@ -1,6 +1,8 @@
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
+use crate::{framebuffer_space_to_ndc};
+
 const DEFAULT_MAX_QUADS: usize = 10_000;
 
 const INDICES: &[u16] = &[
@@ -32,6 +34,15 @@ impl Quad {
             array_stride: mem::size_of::<Self>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Instance,
             attributes: &Self::ATTRIBS,
+        }
+    }
+
+    pub fn from_framebuffer_space(top_left: [u32; 2], bottom_right: [u32; 2], color: [f32; 4], border_radius: f32, framebuffer_size: [u32; 2]) -> Self {
+        Self {
+            top_left: framebuffer_space_to_ndc(top_left, framebuffer_size),
+            bottom_right: framebuffer_space_to_ndc(bottom_right, framebuffer_size),
+            color,
+            border_radius
         }
     }
 }

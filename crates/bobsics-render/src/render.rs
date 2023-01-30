@@ -1,10 +1,9 @@
 use bytemuck::{Pod, Zeroable};
 use wgpu::{*, util::{StagingBelt, DeviceExt}};
+use wgpu_glyph::{GlyphBrush, Section, Text};
 use winit::{window::Window, dpi::PhysicalSize};
 
 use crate::{utils, QuadPipeline};
-
-const BACKGROUND: utils::Color = utils::Color::from_rgba(0.1, 0.9, 0.1, 1.0);
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Pod, Zeroable)]
@@ -29,6 +28,7 @@ pub struct BobsicsRenderer {
     has_to_update_globals: bool,
 
     quad_pipeline: QuadPipeline,
+    glyph_brush: GlyphBrush<()>
 }
 
 impl BobsicsRenderer {
@@ -65,6 +65,10 @@ impl BobsicsRenderer {
         surface.configure(&device, &config);
 
         let staging_belt = StagingBelt::new(10 * 1024);
+
+        // TEMPORARY: Glyph brush
+        let font = wgpu_glyph::ab_glyph::FontArc::try_from_slice(include_bytes!("components/assets/LeagueSpartan-Bold.ttf")).unwrap();
+        let glyph_brush = wgpu_glyph::GlyphBrushBuilder::using_font(font).build(&device, config.format);
 
         // Create globals
         let globals = GlobalsUniform {
@@ -123,7 +127,8 @@ impl BobsicsRenderer {
 
             has_to_update_globals: false,
 
-            quad_pipeline
+            quad_pipeline,
+            glyph_brush
         }
     }
 
@@ -163,7 +168,7 @@ impl BobsicsRenderer {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(BACKGROUND.into()),
+                        load: wgpu::LoadOp::Clear(utils::Color::from_hex(0x23242a).into()),
                         store: true,
                     },
                 })],
@@ -173,25 +178,24 @@ impl BobsicsRenderer {
 
         // Quads
         self.quad_pipeline.draw(&self.device, &mut self.staging_belt, &mut encoder, &view, vec![
-            crate::Quad {
-                top_left: [-0.1, 0.1],
-                bottom_right: [-0.9, 0.9],
-                color: [0.6, 0.1, 0.7, 1.0],
-                border_radius: 100.0,
-            },
-            crate::Quad {
-                top_left: [0.1, 0.1],
-                bottom_right: [0.9, 0.9],
-                color: [1.0, 0.0, 0.0, 1.0],
-                border_radius: 10.0,
-            },
-            crate::Quad {
-                top_left: [-0.1, -0.1],
-                bottom_right: [-0.9, -0.9],
-                color: [0.0, 0.0, 1.0, 1.0],
-                border_radius: 0.0,
-            }
+            crate::Quad::from_framebuffer_space([10, 10], [150, 50], 
+                utils::Color::from_hex(0x1b65fa).into(), 15.0, [
+                    self.config.width, self.config.height
+                ])
         ], &self.globals_bind_group);
+
+        // TEMPORARY: glyph brush
+        self.glyph_brush.queue(Section {
+            screen_position: (40.0, 20.0),
+            bounds: (150f32, 50f32),
+            text: vec![
+                Text::new("Submit").with_scale(22.0).with_color([0.9, 0.9, 0.9, 1.0]),
+            ],
+            ..Section::default()
+        });
+
+        self.glyph_brush.draw_queued(&self.device, &mut self.staging_belt, &mut encoder, &view, self.config.width, self.config.height).expect("Draw queued failed");
+
 
         // Execute
         self.staging_belt.finish();
