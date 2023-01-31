@@ -1,34 +1,36 @@
 use bytemuck::{Pod, Zeroable};
-use wgpu::{*, util::{StagingBelt, DeviceExt}};
-use wgpu_glyph::{GlyphBrush, Section, Text};
-use winit::{window::Window, dpi::PhysicalSize};
+use wgpu::{
+    util::{DeviceExt, StagingBelt},
+    *,
+};
+use winit::{dpi::PhysicalSize, window::Window};
 
-use crate::{utils, QuadPipeline};
+use crate::utils;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Pod, Zeroable)]
 struct GlobalsUniform {
-    u_resolution: [f32; 2]
+    u_resolution: [f32; 2],
 }
 
+#[allow(dead_code)]
 pub struct BobsicsRenderer {
     instance: Instance,
     adapter: Adapter,
     surface: Surface,
-    device: Device,
+    pub device: Device,
     queue: Queue,
     config: SurfaceConfiguration,
     staging_belt: StagingBelt,
 
     globals: GlobalsUniform,
     globals_uniform: wgpu::Buffer,
-    globals_bind_group_layout: wgpu::BindGroupLayout,
+    pub globals_bind_group_layout: wgpu::BindGroupLayout,
     globals_bind_group: wgpu::BindGroup,
 
     has_to_update_globals: bool,
 
-    quad_pipeline: QuadPipeline,
-    glyph_brush: GlyphBrush<()>
+    pub format: wgpu::TextureFormat,
 }
 
 impl BobsicsRenderer {
@@ -37,19 +39,26 @@ impl BobsicsRenderer {
 
         let surface = unsafe { instance.create_surface(&window) };
 
-        let adapter = instance.request_adapter(
-            &wgpu::RequestAdapterOptions {
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
                 compatible_surface: Some(&surface),
-                force_fallback_adapter: false
-            }
-        ).await.unwrap();
+                force_fallback_adapter: false,
+            })
+            .await
+            .unwrap();
 
-        let (device, queue) = adapter.request_device(&wgpu::DeviceDescriptor {
-            features: wgpu::Features::empty(),
-            limits: wgpu::Limits::default(),
-            label: None,
-        }, None).await.unwrap();
+        let (device, queue) = adapter
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    features: wgpu::Features::empty(),
+                    limits: wgpu::Limits::default(),
+                    label: None,
+                },
+                None,
+            )
+            .await
+            .unwrap();
 
         let size = window.inner_size();
 
@@ -66,10 +75,6 @@ impl BobsicsRenderer {
 
         let staging_belt = StagingBelt::new(10 * 1024);
 
-        // TEMPORARY: Glyph brush
-        let font = wgpu_glyph::ab_glyph::FontArc::try_from_slice(include_bytes!("components/assets/LeagueSpartan-Bold.ttf")).unwrap();
-        let glyph_brush = wgpu_glyph::GlyphBrushBuilder::using_font(font).build(&device, config.format);
-
         // Create globals
         let globals = GlobalsUniform {
             u_resolution: [size.width as f32, size.height as f32],
@@ -82,34 +87,31 @@ impl BobsicsRenderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let globals_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Globals bind group layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
+        let globals_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Globals bind group layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: None
+                        min_binding_size: None,
                     },
                     count: None,
-                }
-            ]
-        });
+                }],
+            });
 
         let globals_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Globals bind group"),
             layout: &globals_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: globals_uniform.as_entire_binding(),
-                }
-            ]
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: globals_uniform.as_entire_binding(),
+            }],
         });
-        
-        let quad_pipeline = QuadPipeline::new(&device, surface.get_supported_formats(&adapter)[0], &globals_bind_group_layout);
+
+        let format = surface.get_supported_formats(&adapter)[0];
 
         Self {
             instance,
@@ -127,8 +129,7 @@ impl BobsicsRenderer {
 
             has_to_update_globals: false,
 
-            quad_pipeline,
-            glyph_brush
+            format,
         }
     }
 
@@ -145,14 +146,18 @@ impl BobsicsRenderer {
         }
     }
 
-    pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&mut self, brush: &mut dyn Brush) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
 
-        let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
 
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Bobsics render encoder"),
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Bobsics render encoder"),
+            });
 
         // Update globals if necessary
         if self.has_to_update_globals {
@@ -176,26 +181,21 @@ impl BobsicsRenderer {
             });
         }
 
+        // Render method
+        brush
+            .draw_queued(
+                &self.device,
+                &mut self.staging_belt,
+                &mut encoder,
+                &view,
+                self.config.width,
+                self.config.height,
+                &self.globals_bind_group,
+            )
+            .expect("Draw queued failed");
         // Quads
-        self.quad_pipeline.draw(&self.device, &mut self.staging_belt, &mut encoder, &view, vec![
-            crate::Quad::from_framebuffer_space([10, 10], [150, 50], 
-                utils::Color::from_hex(0x1b65fa).into(), 15.0, [
-                    self.config.width, self.config.height
-                ])
-        ], &self.globals_bind_group);
 
-        // TEMPORARY: glyph brush
-        self.glyph_brush.queue(Section {
-            screen_position: (40.0, 20.0),
-            bounds: (150f32, 50f32),
-            text: vec![
-                Text::new("Submit").with_scale(22.0).with_color([0.9, 0.9, 0.9, 1.0]),
-            ],
-            ..Section::default()
-        });
-
-        self.glyph_brush.draw_queued(&self.device, &mut self.staging_belt, &mut encoder, &view, self.config.width, self.config.height).expect("Draw queued failed");
-
+        // self.glyph_brush.draw_queued(&self.device, &mut self.staging_belt, &mut encoder, &view, self.config.width, self.config.height).expect("Draw queued failed");
 
         // Execute
         self.staging_belt.finish();
@@ -209,7 +209,27 @@ impl BobsicsRenderer {
 
     fn update_globals(&mut self, encoder: &mut wgpu::CommandEncoder) {
         let globals_bytes = bytemuck::bytes_of(&self.globals);
-        let mut globals_buffer = self.staging_belt.write_buffer(encoder, &self.globals_uniform, 0,wgpu::BufferSize::new(globals_bytes.len() as u64).unwrap(), &self.device);
+        let mut globals_buffer = self.staging_belt.write_buffer(
+            encoder,
+            &self.globals_uniform,
+            0,
+            wgpu::BufferSize::new(globals_bytes.len() as u64).unwrap(),
+            &self.device,
+        );
         globals_buffer.copy_from_slice(globals_bytes);
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub trait Brush {
+    fn draw_queued(
+        &mut self,
+        device: &wgpu::Device,
+        staging_belt: &mut StagingBelt,
+        encoder: &mut wgpu::CommandEncoder,
+        target: &wgpu::TextureView,
+        width: u32,
+        height: u32,
+        global_bind_group: &wgpu::BindGroup,
+    ) -> Result<(), &str>;
 }

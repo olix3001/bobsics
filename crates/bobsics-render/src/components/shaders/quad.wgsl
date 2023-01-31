@@ -11,6 +11,8 @@ struct VertexInput {
     @location(1) bottom_right: vec2<f32>,
     @location(2) color: vec4<f32>,
     @location(3) border_radius: f32,
+    @location(4) border_color: vec4<f32>,
+    @location(5) border_width: f32,
 }
 
 struct VertexOutput {
@@ -19,29 +21,41 @@ struct VertexOutput {
     @location(1) border_radius: f32,
     @location(2) top_left: vec2<f32>,
     @location(3) bottom_right: vec2<f32>,
+    @location(4) border_color: vec4<f32>,
+    @location(5) border_width: f32,
+}
+
+fn screen_to_ndc(screen: vec2<f32>) -> vec2<f32> {
+    // scale to ndc
+    let ndc = screen * 2.0 / globals.u_resolution - 1.0;
+
+    // flip y
+    let ndc = vec2<f32>(ndc.x, -ndc.y);
+
+    return ndc;
 }
 
 @vertex
 fn vs_main(input: VertexInput) -> VertexOutput {
     var out: VertexOutput;
 
-    var top_left: vec2<f32> = vec2<f32>(0.0, 0.0);
-    var bottom_right: vec2<f32> = vec2<f32>(0.0, 0.0);
+    var top_left: vec2<f32> = screen_to_ndc(input.top_left);
+    var bottom_right: vec2<f32> = screen_to_ndc(input.bottom_right);
 
     // Calculate the top left and bottom right coordinates of the rectangle
-    if (input.top_left.x <= input.bottom_right.x) {
-        top_left.x = input.top_left.x;
-        bottom_right.x = input.bottom_right.x;
+    if (top_left.x <= bottom_right.x) {
+        top_left.x = top_left.x;
+        bottom_right.x = bottom_right.x;
     } else {
-        top_left.x = input.bottom_right.x;
-        bottom_right.x = input.top_left.x;
+        top_left.x = bottom_right.x;
+        bottom_right.x = top_left.x;
     }
-    if (input.top_left.y > input.bottom_right.y) {
-        top_left.y = input.top_left.y;
-        bottom_right.y = input.bottom_right.y;
+    if (top_left.y > bottom_right.y) {
+        top_left.y = top_left.y;
+        bottom_right.y = bottom_right.y;
     } else {
-        top_left.y = input.bottom_right.y;
-        bottom_right.y = input.top_left.y;
+        top_left.y = bottom_right.y;
+        bottom_right.y = top_left.y;
     }
 
     // Draw the rectangle (CCW winding order)
@@ -55,6 +69,8 @@ fn vs_main(input: VertexInput) -> VertexOutput {
 
     out.color = input.color;
     out.border_radius = input.border_radius;
+    out.border_color = input.border_color;
+    out.border_width = input.border_width;
 
     out.top_left = top_left;
     out.bottom_right = bottom_right;
@@ -62,9 +78,8 @@ fn vs_main(input: VertexInput) -> VertexOutput {
     return out;
 }
 
-fn ndc_to_screen(ndc: vec2<f32>) -> vec2<f32> {
-    // ndc to screen
 
+fn ndc_to_screen(ndc: vec2<f32>) -> vec2<f32> {
     // flip y
     let ndc = vec2<f32>(ndc.x, -ndc.y);
 
@@ -92,6 +107,8 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let size = bottom_right - top_left;
     let center = top_left + size / 2.0;
 
+    var color = input.color;
+
     // Move p relative to the center of the rectangle
     let p = input.position.xy - center;
 
@@ -101,6 +118,11 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     // Calculate the alpha
     let alpha = 1.0 - smoothstep(-0.75, -0.1, dist);
 
+    // Draw the border if inner distance is less than the border width
+    if (dist > -input.border_width && input.border_width > 0.0) {
+        color = input.border_color;
+    }
+
     // Return the color with the alpha
-    return vec4<f32>(input.color.rgb, alpha);
+    return vec4<f32>(color.rgb, alpha * color.a);
 }

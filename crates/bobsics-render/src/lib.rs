@@ -1,7 +1,7 @@
+mod components;
 mod render;
 mod utils;
-mod components;
 
+pub use components::*;
 pub use render::*;
 pub use utils::*;
-pub use components::*;

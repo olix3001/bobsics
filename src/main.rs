@@ -1,77 +1,59 @@
-use bobsics_render::BobsicsRenderer;
-use winit::{window::{WindowBuilder, Window}, dpi::PhysicalSize, event_loop::{EventLoop, ControlFlow}, event::{Event, WindowEvent}};
+use bobsics_gui::{
+    widgets::{
+        layouts::{HorizontalStack, VerticalStack},
+        Label,
+    },
+    BobsicsGUIApp,
+};
+use bobsics_render::Color;
 
 fn main() {
-    let bobsics = Bobsics::new();
-    bobsics.run();
-}
-
-struct Bobsics {
-    event_loop: EventLoop<()>,
-    window: Window,
-    renderer: BobsicsRenderer
-}
-
-impl Bobsics {
-    pub fn new() -> Self {
-
-        // Init event loop
-        let event_loop = EventLoop::new();
-
-        // Init window
-        let window = WindowBuilder::new()
-        .with_title("Bobsics")
-        .with_inner_size(PhysicalSize::new(1200, 700))
-        .build(&event_loop).unwrap();
-
-        let renderer = pollster::block_on(BobsicsRenderer::new(&window));
-
-        Self {
-            event_loop,
-            window,
-            renderer
-        }
-    }
-
-    pub fn run(mut self) -> ! {
-        self.event_loop.run(move |event, _, control_flow| {
-            match event {
-                Event::WindowEvent {
-                    ref event,
-                    window_id
-                } if window_id == self.window.id() => match event {
-                    WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-                    WindowEvent::Resized(physical_size) => {
-                        self.renderer.resize(*physical_size);
-                    }
-                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                        self.renderer.resize(**new_inner_size);
-                    }
-                    _ => {}
-                },
-
-                Event::RedrawRequested(_) => {
-                    match self.renderer.render() {
-                        Ok(_) => {},
-                        Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-                        Err(wgpu::SurfaceError::Outdated) => { }
-                        Err(e) => eprintln!("{e:?}"),
-                    }
-                }
-
-                Event::MainEventsCleared => {
-                    self.window.request_redraw();
-                }
-                _ => {}
-            }
-        });
-    }
-
-    fn resize(&mut self, new_size: PhysicalSize<u32>) {
-        self.renderer.resize(new_size)
-    }
-
-    fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-        todo!()
-    }
+    let mut gui = BobsicsGUIApp::new("Bobsics GUI");
+    let vertical_stack = VerticalStack::new()
+        .with_padding(5.0.into())
+        .with_spacing(1.0.into())
+        .add_child(
+            Label::new("Hello, world 1!", 20.0)
+                .with_color(Color::from_hex(0xff0000))
+                .build(),
+        )
+        .add_child(
+            Label::new("Hello, world 1!", 15.0)
+                .with_color(Color::from_hex(0x00ff00))
+                .build(),
+        )
+        .add_child(
+            Label::new("Hello, world 1!", 10.0)
+                .with_color(Color::from_hex(0x0000ff))
+                .build(),
+        )
+        .build();
+    let vertical_stack_2 = VerticalStack::new()
+        .with_padding(5.0.into())
+        .with_spacing(1.0.into())
+        .add_child(
+            Label::new("Hello, world 2!", 30.0)
+                .with_color(Color::from_hex(0xffff00))
+                .build(),
+        )
+        .add_child(
+            Label::new("Hello, world 2!", 10.0)
+                .with_color(Color::from_hex(0x00ff22))
+                .build(),
+        )
+        .add_child(
+            Label::new("Hello, world 2!", 20.0)
+                .with_color(Color::from_hex(0x2020ff))
+                .build(),
+        )
+        .build();
+    gui.set_widget(
+        HorizontalStack::new()
+            .with_padding(5.0.into())
+            .with_spacing(10.0.into())
+            .add_child(vertical_stack)
+            .add_child(vertical_stack_2)
+            .build(),
+    );
+    gui.run();
 }

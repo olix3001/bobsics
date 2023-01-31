@@ -117,9 +117,21 @@ checksum = "0d8c1fef690941d3e7788d328517591fecc684c084084702d6ff1641e993699a"
 name = "bobsics"
 version = "0.1.0"
 dependencies = [
+ "bobsics-gui",
  "bobsics-render",
  "pollster",
  "wgpu",
+ "winit",
+]
+
+[[package]]
+name = "bobsics-gui"
+version = "0.1.0"
+dependencies = [
+ "bobsics-render",
+ "pollster",
+ "wgpu",
+ "wgpu_glyph",
  "winit",
 ]
 
@@ -130,7 +142,6 @@ dependencies = [
  "bytemuck",
  "raw-window-handle 0.5.0",
  "wgpu",
- "wgpu_glyph",
  "winit",
 ]
 
