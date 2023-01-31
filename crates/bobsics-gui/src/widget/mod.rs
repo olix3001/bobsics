@@ -24,6 +24,8 @@ pub struct BobsicsGUIApp {
     pub event_loop: Option<EventLoop<()>>,
     pub widget: Option<Box<dyn Widget>>,
     pub brush: UniversalBrush,
+
+    pub default_screen_size: (u32, u32),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -64,6 +66,7 @@ impl BobsicsGUIApp {
             event_loop: Some(event_loop),
             widget: None,
             brush,
+            default_screen_size: (1200, 700),
         }
     }
 
@@ -87,9 +90,16 @@ impl BobsicsGUIApp {
                 },
 
                 Event::RedrawRequested(_) => {
-                    self.draw_widget(&Globals {
-                        screen_size: self.window.inner_size().into(),
-                    });
+                    let scale_factor = Vector2::new(
+                        self.window.inner_size().width as f32 / self.default_screen_size.0 as f32,
+                        self.window.inner_size().height as f32 / self.default_screen_size.1 as f32,
+                    );
+                    self.draw_widget(
+                        &Globals {
+                            screen_size: self.window.inner_size().into(),
+                        },
+                        scale_factor,
+                    );
                     match self.renderer.render(&mut self.brush) {
                         Ok(_) => {}
                         Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
@@ -106,7 +116,7 @@ impl BobsicsGUIApp {
         self.widget = Some(widget);
     }
 
-    pub fn draw_widget(&mut self, globals: &Globals) {
+    pub fn draw_widget(&mut self, globals: &Globals, scale_factor: Vector2) {
         if self.widget.is_none() {
             println!("No widget set");
             return;
@@ -114,6 +124,6 @@ impl BobsicsGUIApp {
         let widget = self.widget.as_ref().unwrap();
         // Draw widgets below each other
         let (_x, _y, _width, _height) =
-            widget.draw(Vector2::ZERO, Vector2::UNIT, &mut self.brush, globals);
+            widget.draw(Vector2::ZERO, scale_factor, &mut self.brush, globals);
     }
 }

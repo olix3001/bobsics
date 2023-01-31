@@ -60,23 +60,23 @@ impl Widget for HorizontalStack {
         brush: &mut UniversalBrush,
         globals: &Globals,
     ) -> (f32, f32, f32, f32) {
-        let mut offset = offset + self.options.margin;
+        let mut offset = offset + self.options.margin * scale;
         let mut max_width = 0.0;
         let mut max_height = 0.0;
 
         for child in &self.children {
             let (_, _, width, height) = child.draw(offset, scale, brush, globals);
 
-            offset.x += width + self.options.spacing.x;
-            max_width += width + self.options.spacing.x;
+            offset.x += width + self.options.spacing.x * scale.x;
+            max_width += width + self.options.spacing.x * scale.x;
             max_height = f32::max(max_height, height);
         }
 
         (
             offset.x,
             offset.y,
-            max_width + self.options.margin.x,
-            max_height + self.options.margin.y,
+            max_width + self.options.margin.x * scale.x,
+            max_height + self.options.margin.y * scale.y,
         )
     }
 

@@ -101,6 +101,16 @@ impl std::ops::Add for Vector2 {
         }
     }
 }
+impl std::ops::Mul for Vector2 {
+    type Output = Self;
+
+    fn mul(self, other: Self) -> Self {
+        Self {
+            x: self.x * other.x,
+            y: self.y * other.y,
+        }
+    }
+}
 
 // ====< OTHER >====
 
@@ -133,7 +143,13 @@ impl UniversalBrush {
         Ok(())
     }
     pub fn measure(&mut self, section: &wgpu_glyph::Section) -> (f32, f32) {
-        let bounds = self.glyph_brush.glyph_bounds(section).unwrap();
+        let bounds = self.glyph_brush.glyph_bounds(section).unwrap_or_else(|| {
+            println!("WARNING: No bounds for section: {section:?}");
+            wgpu_glyph::ab_glyph::Rect {
+                min: wgpu_glyph::ab_glyph::Point { x: 0.0, y: 0.0 },
+                max: wgpu_glyph::ab_glyph::Point { x: 0.0, y: 0.0 },
+            }
+        });
         (bounds.width(), bounds.height())
     }
 
