@@ -85,7 +85,6 @@ impl Widget for HorizontalStack {
         )
             .into();
 
-        bbox.draw(Vector2::ZERO, brush, Color::from_hex(0x0000ff)).unwrap();
         bbox
     }
 

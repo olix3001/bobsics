@@ -85,7 +85,7 @@ impl Widget for Label {
             bounds: (globals.screen_size.0 as f32, globals.screen_size.1 as f32),
             text: vec![Text::new(&self.text)
                 .with_color(self.color)
-                .with_scale(self.scale * scale.x)],
+                .with_scale(self.scale * scale.y)],
             ..Default::default()
         };
 

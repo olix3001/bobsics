@@ -5,10 +5,10 @@ use crate::{
     Globals, Widget,
 };
 
-pub type ButtonClickCallback = Box<dyn Fn(ButtonClickEvent)>;
+pub type ButtonClickCallback = Box<dyn Fn(ButtonClickEvent)->bool>;
 
 pub struct ButtonClickEvent<'a> {
-    pub button: &'a Button,
+    pub button: &'a mut Button,
     pub mouse_position: Vector2,
     pub mouse_position_relative: Vector2,
 }
@@ -129,7 +129,7 @@ impl Button {
 
     pub fn on_click<F>(mut self, on_click: F) -> Self
     where
-        F: Fn(ButtonClickEvent) + 'static,
+        F: Fn(ButtonClickEvent)->bool + 'static,
     {
         self.on_click = Some(Box::new(on_click));
         self
@@ -137,6 +137,12 @@ impl Button {
 
     pub fn build(self) -> Box<Self> {
         Box::new(self)
+    }
+
+    // ====< Setters without ownership >====
+    pub fn set_text(&mut self, text: &str) {
+        self.text = text.to_string();
+        self._label = Label::new(text, self.options.scale);
     }
 
     // ====< Event handlers >====
@@ -151,7 +157,7 @@ impl Button {
     ) {
         // Set hovered state
         let ns = self
-            .measure(offset, scale, brush, globals)
+            .measure_hitbox(offset, scale, brush, globals)
             .contains(mouse_position);
         if self._is_hovered != ns {
             self._is_hovered = ns;
@@ -164,8 +170,8 @@ impl Button {
         }
     }
     fn handle_mouse_click(
-        &self,
-        _window: &winit::window::Window,
+        &mut self,
+        window: &winit::window::Window,
         brush: &mut UniversalBrush,
         offset: Vector2,
         scale: Vector2,
@@ -177,16 +183,44 @@ impl Button {
         }
         // Check if the button was clicked
         if self
-            .measure(offset, scale, brush, globals)
+            .measure_hitbox(offset, scale, brush, globals)
             .contains(mouse_position)
         {
+            // Temporary solution
+            let function = self.on_click.take().unwrap();
             let event = ButtonClickEvent {
                 button: self,
                 mouse_position,
                 mouse_position_relative: mouse_position - offset,
             };
-            (self.on_click.as_ref().unwrap())(event);
+            if function(event) { window.request_redraw(); }
+            self.on_click = Some(function);
         }
+    }
+
+    fn measure_hitbox(
+        &self,
+        offset: Vector2,
+        scale: Vector2,
+        brush: &mut UniversalBrush,
+        globals: &Globals,
+    ) -> BBox {
+        let offset = offset + self.options.margin * scale;
+
+        // Get label size
+        let label_bbox = self._label.measure(offset, scale, brush, globals);
+
+        // Get button size
+        let button_size = Vector2::new(
+            self.options
+                .width
+                .unwrap_or(label_bbox.width() + self.options.padding.x * 2.0) * scale.x,
+            self.options
+                .height
+                .unwrap_or(label_bbox.height() + self.options.padding.y * 2.0) * scale.y,
+        );
+        
+        BBox::new(offset, offset + button_size)
     }
 }
 
@@ -198,19 +232,19 @@ impl Widget for Button {
         brush: &mut UniversalBrush,
         globals: &Globals,
     ) -> BBox {
-        let offset = offset + self.options.margin;
+        let n_offset = offset + self.options.margin * scale;
 
         // Get label size
-        let label_bbox = self._label.measure(offset, scale, brush, globals);
+        let label_bbox = self._label.measure(n_offset, scale, brush, globals);
 
         // Get button size
         let button_size = Vector2::new(
             self.options
                 .width
-                .unwrap_or(label_bbox.width() + self.options.padding.x * 2.0),
+                .unwrap_or(label_bbox.width() + self.options.padding.x * 2.0) * scale.x,
             self.options
                 .height
-                .unwrap_or(label_bbox.height() + self.options.padding.y * 2.0),
+                .unwrap_or(label_bbox.height() + self.options.padding.y * 2.0) * scale.y,
         );
 
         // Get text offset
@@ -221,8 +255,8 @@ impl Widget for Button {
 
         // Draw background
         brush.queue_quad_raw(bobsics_render::Quad {
-            top_left: offset.into(),
-            bottom_right: (offset + button_size).into(),
+            top_left: n_offset.into(),
+            bottom_right: (n_offset + button_size).into(),
             color: if self._is_hovered {
                 self.options.hover_color.into()
             } else {
@@ -235,7 +269,7 @@ impl Widget for Button {
 
         // Draw text
         self._label
-            .draw(offset + text_offset, scale, brush, globals);
+            .draw(n_offset + text_offset, scale, brush, globals);
 
         self.measure(offset, scale, brush, globals)
     }
@@ -247,7 +281,7 @@ impl Widget for Button {
         brush: &mut UniversalBrush,
         globals: &Globals,
     ) -> BBox {
-        let offset = offset + self.options.margin;
+        let offset = offset;
 
         // Get label size
         let label_bbox = self._label.measure(offset, scale, brush, globals);
@@ -256,14 +290,13 @@ impl Widget for Button {
         let button_size = Vector2::new(
             self.options
                 .width
-                .unwrap_or(label_bbox.width() + self.options.padding.x * 2.0),
+                .unwrap_or(label_bbox.width() + self.options.padding.x * 2.0) * scale.x + self.options.margin.x * 2.0 * scale.x,
             self.options
                 .height
-                .unwrap_or(label_bbox.height() + self.options.padding.y * 2.0),
+                .unwrap_or(label_bbox.height() + self.options.padding.y * 2.0) * scale.y + self.options.margin.y * 2.0 * scale.y,
         );
-
-        // Return button bbox
-        BBox::new(offset, offset + button_size + self.options.margin)
+        
+        BBox::new(offset, offset + button_size)
     }
 
     fn handle_event(

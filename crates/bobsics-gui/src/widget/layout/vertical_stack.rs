@@ -85,7 +85,6 @@ impl Widget for VerticalStack {
         )
             .into();
 
-        bbox.draw(Vector2::ZERO, brush, Color::from_hex(0xff0000)).unwrap();
         bbox
     }
 

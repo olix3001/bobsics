@@ -17,7 +17,11 @@ fn main() {
             .add_child(Button::new("Click me!")
                 .with_width(200.0)
                 .with_margin((5.0, 20.0).into())
-                .on_click(|_| println!("Hello world from the button!")).build())
+                .on_click(|event| {
+                    println!("Clicked!");
+                    event.button.set_text("Hello world!");
+                    true
+                }).build())
             .build(),
     );
     gui.run();
