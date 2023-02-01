@@ -62,23 +62,23 @@ impl Widget for HorizontalStack {
         brush: &mut UniversalBrush,
         globals: &Globals,
     ) -> BBox {
-        let mut n_offset = offset + self.options.margin + self.options.padding;
+        let mut n_offset = offset + self.options.margin * scale + self.options.padding * scale;
         let mut max_width = 0.0;
         let mut max_height = 0.0;
 
         for child in &self.children {
             let (_, _, width, height) = child.draw(n_offset, scale, brush, globals).into();
 
-            n_offset.x += width + self.options.spacing.x + self.options.padding.x;
-            max_width += width + self.options.spacing.x;
+            n_offset.x += width + self.options.spacing.x * scale.x;
+            max_width += width + self.options.spacing.x * scale.x;
             max_height = f32::max(max_height, height);
         }
 
         let bbox: BBox = (
             offset.x,
             offset.y,
-            max_width + self.options.margin.x + 2.0 * self.options.padding.x,
-            max_height + self.options.margin.y + 2.0 * self.options.padding.y,
+            max_width + scale.x*(self.options.margin.x + 2.0 * self.options.padding.x),
+            max_height + scale.y*(self.options.margin.y + 2.0 * self.options.padding.y),
         ).into();
         
         bbox.draw(Vector2::ZERO, brush, Color::from_hex(0x0000ff));
@@ -86,23 +86,23 @@ impl Widget for HorizontalStack {
     }
 
     fn measure(&self, offset: Vector2, scale: Vector2, brush: &mut UniversalBrush) -> BBox {
-        let mut n_offset = offset + self.options.margin + self.options.padding;
+        let mut n_offset = offset + self.options.margin * scale + self.options.padding * scale;
         let mut max_width = 0.0;
         let mut max_height = 0.0;
 
         for child in &self.children {
             let (_, _, width, height) = child.measure(n_offset, scale, brush).into();
 
-            n_offset.x += width + self.options.spacing.x;
-            max_width += width + self.options.spacing.x;
+            n_offset.x += width + self.options.spacing.x * scale.x;
+            max_width += width + self.options.spacing.x * scale.x;
             max_height = f32::max(max_height, height);
         }
 
         (
             offset.x,
             offset.y,
-            max_width + self.options.margin.x + 2.0 * self.options.padding.x,
-            max_height + self.options.margin.y + 2.0 * self.options.padding.y,
+            max_width + scale.x*(self.options.margin.x + 2.0 * self.options.padding.x),
+            max_height + scale.y*(self.options.margin.y + 2.0 * self.options.padding.y),
         ).into()
     }
 
