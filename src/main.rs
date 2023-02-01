@@ -1,58 +1,23 @@
 use bobsics_gui::{
     widgets::{
-        layouts::{HorizontalStack, VerticalStack},
-        Label,
+        layouts::VerticalStack,
+        Button, Label,
     },
     BobsicsGUIApp,
 };
-use bobsics_render::Color;
 
 fn main() {
     let mut gui = BobsicsGUIApp::new("Bobsics GUI");
-    let vertical_stack = VerticalStack::new()
-        .with_padding(5.0.into())
-        .with_spacing(1.0.into())
-        .add_child(
-            Label::new("Hello, world 1!", 20.0)
-                .with_color(Color::from_hex(0xff0000))
-                .build(),
-        )
-        .add_child(
-            Label::new("Hello, world 1!", 15.0)
-                .with_color(Color::from_hex(0x00ff00))
-                .build(),
-        )
-        .add_child(
-            Label::new("Hello, world 1!", 10.0)
-                .with_color(Color::from_hex(0x0000ff))
-                .build(),
-        )
-        .build();
-    let vertical_stack_2 = VerticalStack::new()
-        .with_padding(5.0.into())
-        .with_spacing(1.0.into())
-        .add_child(
-            Label::new("Hello, world 2!", 30.0)
-                .with_color(Color::from_hex(0xffff00))
-                .build(),
-        )
-        .add_child(
-            Label::new("Hello, world 2!", 10.0)
-                .with_color(Color::from_hex(0x00ff22))
-                .build(),
-        )
-        .add_child(
-            Label::new("Hello, world 2!", 20.0)
-                .with_color(Color::from_hex(0x2020ff))
-                .build(),
-        )
-        .build();
     gui.set_widget(
-        HorizontalStack::new()
+        VerticalStack::new()
             .with_padding(5.0.into())
-            .with_spacing(10.0.into())
-            .add_child(vertical_stack)
-            .add_child(vertical_stack_2)
+            .add_child(
+                Label::new("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aliquam dignissim, lectus nec tincidunt porttitor, eros orci tincidunt nibh, eu lobortis erat dui vel lorem. Phasellus eu blandit tortor. In in dapibus ante. Nam tincidunt facilisis felis, at hendrerit eros lacinia vel. Curabitur purus magna, gravida eget nisi dignissim, eleifend sollicitudin enim. Vivamus feugiat facilisis turpis, eu hendrerit urna sagittis eu. Vestibulum a euismod lacus. Morbi nec odio ullamcorper, finibus nibh id, suscipit sapien. Quisque posuere maximus congue. Sed semper rhoncus eros a interdum. Suspendisse eleifend varius urna et bibendum.", 15.0).build(),
+            )
+            .add_child(Button::new("Click me!")
+                .with_width(200.0)
+                .with_margin((5.0, 20.0).into())
+                .on_click(|_| println!("Hello world from the button!")).build())
             .build(),
     );
     gui.run();

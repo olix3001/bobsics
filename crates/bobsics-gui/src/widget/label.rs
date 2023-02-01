@@ -1,7 +1,7 @@
-use bobsics_render::{Color, Quad};
+use bobsics_render::Color;
 use wgpu_glyph::Text;
 
-use crate::widgets::{UniversalBrush, Vector2, BBox};
+use crate::widgets::{BBox, GUIEvent, UniversalBrush, Vector2};
 
 use super::{widgets::Font, Globals, Widget};
 
@@ -17,7 +17,7 @@ impl Label {
     pub fn new(text: &str, size: f32) -> Self {
         Self {
             text: text.to_string(),
-            color: Color::from_hex(0xffffff),
+            color: Color::WHITE,
             font: Font::default(),
             scale: size,
         }
@@ -70,15 +70,19 @@ impl Widget for Label {
         brush.queue_text_raw(&section).unwrap();
 
         // Measure the text and return the bounding box
-        let bbox = self.measure(offset, scale, brush);
-        bbox.draw(Vector2::ZERO, brush, Color::from_hex(0x00ff00));
-        bbox
+        self.measure(offset, scale, brush, globals)
     }
 
-    fn measure(&self, offset: Vector2, scale: Vector2, brush: &mut UniversalBrush) -> BBox {
+    fn measure(
+        &self,
+        offset: Vector2,
+        scale: Vector2,
+        brush: &mut UniversalBrush,
+        globals: &Globals,
+    ) -> BBox {
         let section = wgpu_glyph::Section {
             screen_position: offset.into(),
-            bounds: (1000.0, 1000.0),
+            bounds: (globals.screen_size.0 as f32, globals.screen_size.1 as f32),
             text: vec![Text::new(&self.text)
                 .with_color(self.color)
                 .with_scale(self.scale * scale.x)],
@@ -89,11 +93,15 @@ impl Widget for Label {
         (offset.x, offset.y, bbox.0, bbox.1).into()
     }
 
-    fn hover(&self) {
-        todo!()
-    }
-
-    fn click(&self) {
-        todo!()
+    fn handle_event(
+        &mut self,
+        _window: &winit::window::Window,
+        _brush: &mut UniversalBrush,
+        _offset: Vector2,
+        _scale: Vector2,
+        _event: &GUIEvent,
+        _globals: &Globals,
+    ) {
+        // Do nothing
     }
 }

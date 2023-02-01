@@ -10,6 +10,7 @@ impl Color {
     pub const TRANSPARENT: Self = Self::from_rgba(0.0, 0.0, 0.0, 0.0);
     pub const BLACK: Self = Self::from_rgba(0.0, 0.0, 0.0, 1.0);
     pub const WHITE: Self = Self::from_rgba(1.0, 1.0, 1.0, 1.0);
+    pub const RED: Self = Self::from_rgba(1.0, 0.0, 0.0, 1.0);
 
     pub const fn from_rgba(r: f32, g: f32, b: f32, a: f32) -> Self {
         Self { r, g, b, a }
@@ -22,6 +23,15 @@ impl Color {
             g: linear[1],
             b: linear[2],
             a: 1.0,
+        }
+    }
+
+    pub fn with_alpha(&self, alpha: f32) -> Self {
+        Self {
+            r: self.r,
+            g: self.g,
+            b: self.b,
+            a: alpha,
         }
     }
 
