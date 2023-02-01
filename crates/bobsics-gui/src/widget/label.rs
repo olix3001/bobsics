@@ -1,7 +1,7 @@
 use bobsics_render::{Color, Quad};
 use wgpu_glyph::Text;
 
-use crate::widgets::{UniversalBrush, Vector2};
+use crate::widgets::{UniversalBrush, Vector2, BBox};
 
 use super::{widgets::Font, Globals, Widget};
 
@@ -56,7 +56,7 @@ impl Widget for Label {
         scale: Vector2,
         brush: &mut UniversalBrush,
         globals: &Globals,
-    ) -> (f32, f32, f32, f32) {
+    ) -> BBox {
         // Draw the text
         let section = wgpu_glyph::Section {
             screen_position: offset.into(),
@@ -69,21 +69,24 @@ impl Widget for Label {
 
         brush.queue_text_raw(&section).unwrap();
 
-        // Draw bounding box
-        let bbox = brush.measure(&section);
-        brush
-            .queue_quad_raw(Quad {
-                top_left: offset.into(),
-                bottom_right: [offset.x + bbox.0, offset.y + bbox.1],
-                color: Color::TRANSPARENT.into(),
-                border_radius: 0.0,
-                border_color: Color::from_hex(0xff0000).into(),
-                border_width: 1.0,
-            })
-            .unwrap();
+        // Measure the text and return the bounding box
+        let bbox = self.measure(offset, scale, brush);
+        bbox.draw(Vector2::ZERO, brush, Color::from_hex(0x00ff00));
+        bbox
+    }
 
-        // Calculate the size of the text
-        (offset.x, offset.y, bbox.0, bbox.1)
+    fn measure(&self, offset: Vector2, scale: Vector2, brush: &mut UniversalBrush) -> BBox {
+        let section = wgpu_glyph::Section {
+            screen_position: offset.into(),
+            bounds: (1000.0, 1000.0),
+            text: vec![Text::new(&self.text)
+                .with_color(self.color)
+                .with_scale(self.scale * scale.x)],
+            ..Default::default()
+        };
+
+        let bbox = brush.measure(&section);
+        (offset.x, offset.y, bbox.0, bbox.1).into()
     }
 
     fn hover(&self) {

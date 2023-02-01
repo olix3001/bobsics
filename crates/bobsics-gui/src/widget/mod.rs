@@ -6,7 +6,7 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-use self::widgets::{UniversalBrush, Vector2};
+use self::widgets::{UniversalBrush, Vector2, BBox};
 
 mod common;
 mod label;
@@ -40,7 +40,8 @@ pub trait Widget {
         scale: Vector2,
         brush: &mut UniversalBrush,
         globals: &Globals,
-    ) -> (f32, f32, f32, f32); // x, y, width, height
+    ) -> BBox; // x, y, width, height
+    fn measure(&self, offset: Vector2, scale: Vector2, brush: &mut UniversalBrush) -> BBox;
     fn hover(&self);
     fn click(&self);
 }
@@ -124,6 +125,6 @@ impl BobsicsGUIApp {
         let widget = self.widget.as_ref().unwrap();
         // Draw widgets below each other
         let (_x, _y, _width, _height) =
-            widget.draw(Vector2::ZERO, scale_factor, &mut self.brush, globals);
+            widget.draw(Vector2::ZERO, scale_factor, &mut self.brush, globals).into();
     }
 }

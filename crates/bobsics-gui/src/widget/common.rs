@@ -1,4 +1,4 @@
-use bobsics_render::{Brush, QuadBrush};
+use bobsics_render::{Brush, QuadBrush, Color};
 use wgpu::{Device, TextureFormat};
 use wgpu_glyph::GlyphCruncher;
 
@@ -179,5 +179,59 @@ impl Brush for UniversalBrush {
             .unwrap();
 
         Ok(())
+    }
+}
+
+
+// ====< BOUNDING BOX >====
+pub struct BBox {
+    pub min: Vector2,
+    pub max: Vector2,
+}
+
+impl BBox {
+    pub fn new(min: Vector2, max: Vector2) -> Self {
+        Self { min, max }
+    }
+
+    pub fn from_wh(pos: Vector2, size: Vector2) -> Self {
+        Self {
+            min: pos,
+            max: pos + size,
+        }
+    }
+
+    pub fn width(&self) -> f32 {
+        self.max.x - self.min.x
+    }
+
+    pub fn height(&self) -> f32 {
+        self.max.y - self.min.y
+    }
+
+    pub fn draw<'a>(&'a self, offset: Vector2, brush: &'a mut UniversalBrush, color: Color) -> Result<(), &str> {
+        brush.queue_quad_raw(bobsics_render::Quad {
+            top_left: (self.min + offset).into(),
+            bottom_right: (self.max + offset).into(),
+            color: Color::TRANSPARENT.into(),
+            border_radius: 0.0,
+            border_color: color.into(),
+            border_width: 1.5,
+        })
+    }
+}
+
+impl From<BBox> for (f32, f32, f32, f32) {
+    fn from(bbox: BBox) -> Self {
+        (bbox.min.x, bbox.min.y, bbox.width(), bbox.height())
+    }
+}
+
+impl From<(f32, f32, f32, f32)> for BBox {
+    fn from(bbox: (f32, f32, f32, f32)) -> Self {
+        Self {
+            min: Vector2::new(bbox.0, bbox.1),
+            max: Vector2::new(bbox.0 + bbox.2, bbox.1 + bbox.3),
+        }
     }
 }
